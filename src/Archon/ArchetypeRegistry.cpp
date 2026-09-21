@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <utility>
 
 #include "Math.h"
@@ -43,7 +45,7 @@ namespace Archon
 
         ChunkInfo CreateChunkInfo(const ComponentMask& componentMask)
         {
-            constexpr size_t kChunkSize = 1024;
+            constexpr size_t TargetChunkSize = 1024;
             const size_t allocationAlignment = GetAllocationAlignment(componentMask);
 
             size_t sizePerColumn = sizeof(EntityId);
@@ -52,19 +54,19 @@ namespace Archon
                 sizePerColumn += ComponentRegistry::GetComponentInfo(componentId).size;
             });
 
-            size_t columnCount = kChunkSize / sizePerColumn;
+            size_t columnCount = std::max<size_t>(1, TargetChunkSize / sizePerColumn);
 
-            while (columnCount > 0 && GetRequiredAllocationSize(componentMask, columnCount, allocationAlignment) > kChunkSize)
+            while (columnCount > 1 && GetRequiredAllocationSize(componentMask, columnCount, allocationAlignment) > TargetChunkSize)
             {
                 --columnCount;
             }
 
-            while (GetRequiredAllocationSize(componentMask, columnCount + 1, allocationAlignment) <= kChunkSize)
+            while (GetRequiredAllocationSize(componentMask, columnCount + 1, allocationAlignment) <= TargetChunkSize)
             {
                 ++columnCount;
             }
 
-            assert(columnCount > 0);
+            assert(columnCount <= std::numeric_limits<uint16_t>::max());
 
             ChunkInfo chunkInfo{};
             chunkInfo.capacity = columnCount;

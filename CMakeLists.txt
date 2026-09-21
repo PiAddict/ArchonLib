@@ -11,6 +11,7 @@ add_library(Archon STATIC
         )
 
 target_compile_features(Archon PUBLIC cxx_std_20)
+set_target_properties(Archon PROPERTIES CXX_EXTENSIONS OFF)
 
 target_include_directories(Archon
         PUBLIC

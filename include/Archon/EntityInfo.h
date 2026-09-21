@@ -22,7 +22,6 @@ namespace Archon
     class EntityInfoTable
     {
         static constexpr size_t EntityPageSize = 4096;
-        static constexpr size_t EntityPageCount = (EntityId::MaxIndex / EntityPageSize) + 1;
 
         struct Page
         {
@@ -32,14 +31,9 @@ namespace Archon
         std::vector<std::unique_ptr<Page>> m_pages;
 
     public:
-        EntityInfoTable()
-        {
-            m_pages.reserve(EntityPageCount);
-        }
-
         EntityInfo& GetOrCreate(IndexType index)
         {
-            assert(index <= EntityId::MaxIndex);
+            assert(index >= EntityId::FirstIndex);
 
             const size_t pageIndex = index / EntityPageSize;
             if (pageIndex >= m_pages.size())
@@ -57,7 +51,7 @@ namespace Archon
 
         [[nodiscard]] EntityInfo* TryGet(IndexType index)
         {
-            if (index > EntityId::MaxIndex)
+            if (index < EntityId::FirstIndex)
             {
                 return nullptr;
             }
@@ -73,7 +67,7 @@ namespace Archon
 
         [[nodiscard]] const EntityInfo* TryGet(IndexType index) const
         {
-            if (index > EntityId::MaxIndex)
+            if (index < EntityId::FirstIndex)
             {
                 return nullptr;
             }

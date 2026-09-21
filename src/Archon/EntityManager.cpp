@@ -85,23 +85,30 @@ namespace Archon
         {
             index = m_freeListHead;
             info = &m_entityInfo.GetOrCreate(index);
+
+            const EntityId entity(index, info->version);
+            const EntityLocation location = archetype->AddEntity(entity);
+
             m_freeListHead = info->nextFreeIndex;
             info->nextFreeIndex = 0;
+            info->location = location;
+            return entity;
         }
-        else
-        {
-            if (m_nextEntityIndex > EntityId::MaxIndex)
-            {
-                return EntityId::Null;
-            }
 
-            index = m_nextEntityIndex++;
-            info = &m_entityInfo.GetOrCreate(index);
-            info->version = EntityId::FirstVersion;
+        if (m_nextEntityIndex > EntityId::MaxIndex)
+        {
+            return EntityId::Null;
         }
+
+        index = static_cast<IndexType>(m_nextEntityIndex);
+        info = &m_entityInfo.GetOrCreate(index);
+        info->version = EntityId::FirstVersion;
 
         const EntityId entity(index, info->version);
-        info->location = archetype->AddEntity(entity);
+        const EntityLocation location = archetype->AddEntity(entity);
+
+        info->location = location;
+        ++m_nextEntityIndex;
         return entity;
     }
 

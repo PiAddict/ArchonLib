@@ -9,8 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <Archon/Component.h>
-
 namespace Archon
 {
     using ComponentId = uint16_t;
@@ -45,7 +43,6 @@ namespace Archon
     template <typename ComponentType>
     ComponentId ComponentRegistry::Register()
     {
-        static_assert(std::is_base_of_v<Component, ComponentType>, "ComponentType must inherit from Component");
         static_assert(std::is_standard_layout_v<ComponentType>, "ComponentType must be standard layout");
         static_assert(std::is_trivial_v<ComponentType>, "ComponentType must be trivial");
 

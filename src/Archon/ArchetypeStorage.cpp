@@ -18,12 +18,14 @@ namespace Archon
 
     void ArchetypeStorage::AllocateChunk()
     {
-        auto* allocation = static_cast<std::byte*>(
-            ::operator new(
-                m_info->chunkInfo.allocatedSize,
-                std::align_val_t{m_info->chunkInfo.allocationAlignment}));
+        const size_t alignment = m_info->chunkInfo.allocationAlignment;
+        auto* allocation = static_cast<std::byte*>(::operator new(
+            m_info->chunkInfo.allocatedSize,
+            std::align_val_t{alignment}));
 
+        const auto chunkIndex = static_cast<ChunkIndex>(m_chunks.size());
         m_chunks.emplace_back(0, allocation);
+        m_nonFullChunks.push_back(chunkIndex);
     }
 
     ArchetypeStorage::~ArchetypeStorage()
@@ -53,24 +55,26 @@ namespace Archon
 
     EntityLocation ArchetypeStorage::AddEntity(EntityId entity)
     {
-        for (ChunkIndex chunkIndex = 0; chunkIndex < m_chunks.size(); ++chunkIndex)
+        if (m_nonFullChunks.empty())
         {
-            Chunk& chunk = m_chunks[chunkIndex];
-            if (chunk.m_columnCount < m_info->chunkInfo.capacity)
-            {
-                const ColumnIndex columnIndex = chunk.m_columnCount;
-                auto* entities = reinterpret_cast<EntityId*>(chunk.data);
-                std::construct_at(entities + columnIndex, entity);
-                ++chunk.m_columnCount;
-                return {m_id, chunkIndex, columnIndex};
-            }
+            AllocateChunk();
         }
 
-        AllocateChunk();
-        auto* entities = reinterpret_cast<EntityId*>(m_chunks.back().data);
-        std::construct_at(entities, entity);
-        m_chunks.back().m_columnCount = 1;
-        return {m_id, static_cast<ChunkIndex>(m_chunks.size() - 1), 0};
+        const ChunkIndex chunkIndex = m_nonFullChunks.back();
+        Chunk& chunk = m_chunks[chunkIndex];
+        assert(chunk.m_columnCount < m_info->chunkInfo.capacity);
+
+        const ColumnIndex columnIndex = chunk.m_columnCount;
+        auto* entities = reinterpret_cast<EntityId*>(chunk.data);
+        std::construct_at(entities + columnIndex, entity);
+        ++chunk.m_columnCount;
+
+        if (chunk.m_columnCount == m_info->chunkInfo.capacity)
+        {
+            m_nonFullChunks.pop_back();
+        }
+
+        return {m_id, chunkIndex, columnIndex};
     }
 
     std::optional<EntityId> ArchetypeStorage::RemoveEntity(const EntityLocation& location)
@@ -81,6 +85,7 @@ namespace Archon
         Chunk& chunk = m_chunks[location.chunkIndex];
         assert(location.columnIndex < chunk.m_columnCount);
 
+        const bool wasFull = chunk.m_columnCount == m_info->chunkInfo.capacity;
         const ColumnIndex lastColumn = chunk.m_columnCount - 1;
         auto* entities = reinterpret_cast<EntityId*>(chunk.data);
         std::optional<EntityId> movedEntity;
@@ -102,6 +107,12 @@ namespace Archon
 
         std::destroy_at(entities + lastColumn);
         --chunk.m_columnCount;
+
+        if (wasFull)
+        {
+            m_nonFullChunks.push_back(location.chunkIndex);
+        }
+
         return movedEntity;
     }
 }

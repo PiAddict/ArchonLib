@@ -2,63 +2,65 @@
 #define ARCHON_ENTITYID_H
 
 #include <cstdint>
+#include <limits>
+#include <type_traits>
 
 namespace Archon
 {
     using IndexType = uint32_t;
     using VersionType = uint32_t;
-    using EntityType = uint32_t;
+    using EntityType = uint64_t;
 
     class EntityId
     {
     public:
-        static constexpr IndexType IndexBitCount = 24;
-        static constexpr IndexType MaxIndex = (IndexType{1} << IndexBitCount) - 1;
+        static constexpr uint32_t IndexBitCount = 32;
+        static constexpr IndexType MaxIndex = std::numeric_limits<IndexType>::max();
         static constexpr IndexType FirstIndex = 1;
-        static constexpr VersionType VersionBitCount = 8;
-        static constexpr VersionType MaxVersion = (VersionType{1} << VersionBitCount) - 1;
+        static constexpr uint32_t VersionBitCount = 32;
+        static constexpr VersionType MaxVersion = std::numeric_limits<VersionType>::max();
         static constexpr VersionType FirstVersion = 1;
-        static EntityId Null;
+        static const EntityId Null;
 
     protected:
         static constexpr IndexType InvalidIndex = 0;
         static constexpr VersionType InvalidVersion = 0;
+        static constexpr EntityType IndexMask = MaxIndex;
+        static constexpr uint32_t VersionShift = IndexBitCount;
 
-        static_assert(sizeof(EntityType) <= (IndexBitCount + VersionBitCount) / 8);
+        EntityType m_id{};
 
-        union
+        [[nodiscard]] static constexpr EntityType Encode(const IndexType index, const VersionType version) noexcept
         {
-            EntityType m_id{};
-
-            struct
-            {
-                IndexType m_index : IndexBitCount;
-                VersionType m_version : VersionBitCount;
-            };
-        };
+            return (EntityType{version} << VersionShift) | EntityType{index};
+        }
 
     public:
-        EntityId() : m_index(InvalidIndex), m_version(InvalidVersion)
+        constexpr EntityId() noexcept = default;
+
+        constexpr EntityId(const IndexType index) noexcept
+            : EntityId(index, FirstVersion)
         {
         }
 
-        EntityId(IndexType index) : m_index(index), m_version(FirstVersion)
+        constexpr EntityId(const IndexType index, const VersionType version) noexcept
+            : m_id(Encode(index, version))
         {
         }
 
-        EntityId(IndexType index, VersionType version) : m_index(index), m_version(version)
-        {
-        }
+        bool operator==(const EntityId&) const noexcept;
+        bool operator!=(const EntityId&) const noexcept;
 
-        bool operator==(const EntityId&) const;
-        bool operator!=(const EntityId&) const;
-
-        [[nodiscard]] static VersionType NextVersion(VersionType version);
-        void IncrementVersion();
-        [[nodiscard]] IndexType GetIndex() const;
-        [[nodiscard]] VersionType GetVersion() const;
-        [[nodiscard]] EntityType GetUnderlyingId() const;
+        [[nodiscard]] static VersionType NextVersion(VersionType version) noexcept;
+        void IncrementVersion() noexcept;
+        [[nodiscard]] IndexType GetIndex() const noexcept;
+        [[nodiscard]] VersionType GetVersion() const noexcept;
+        [[nodiscard]] EntityType GetUnderlyingId() const noexcept;
     };
+
+    static_assert(sizeof(EntityId) == sizeof(EntityType));
+    static_assert(std::is_standard_layout_v<EntityId>);
+    static_assert(std::is_trivially_copyable_v<EntityId>);
 }
 
 #endif // ARCHON_ENTITYID_H

@@ -19,6 +19,7 @@ namespace Archon
         ArchetypeId m_id = InvalidArchetypeId;
         const ArchetypeInfo* m_info = nullptr;
         std::vector<Chunk> m_chunks;
+        std::vector<ChunkIndex> m_nonFullChunks;
 
         void AllocateChunk();
         explicit ArchetypeStorage(ArchetypeId id);

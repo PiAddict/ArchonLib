@@ -22,7 +22,7 @@ add_subdirectory(path/to/Archon)
 target_link_libraries(MyGame PRIVATE Archon::Archon)
 ```
 
-For most use cases, you should be good enough just to include the main heaader and go from there. There are currently no other docs, so good luck haha.
+For most use cases, you should be good enough just to include the main header and go from there. There are currently no other docs, so good luck haha.
 
 ```cpp
 #include <Archon/Archon.h>

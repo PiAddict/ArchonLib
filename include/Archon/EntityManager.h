@@ -23,7 +23,7 @@ namespace Archon
 
         EntityInfoTable m_entityInfo;
         std::deque<std::unique_ptr<ArchetypePage>> m_archetypePages;
-        IndexType m_nextEntityIndex = EntityId::FirstIndex;
+        EntityType m_nextEntityIndex = EntityId::FirstIndex;
         IndexType m_freeListHead = 0;
 
         ArchetypeStorage* GetOrCreateArchetypeStorage(ArchetypeId id);

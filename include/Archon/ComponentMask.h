@@ -1,8 +1,9 @@
 #ifndef ARCHON_COMPONENTMASK_H
 #define ARCHON_COMPONENTMASK_H
 
-#include <functional>
 #include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <vector>
 
 #include <Archon/ComponentRegistry.h>
@@ -63,7 +64,7 @@ struct std::hash<Archon::ComponentMask>
 {
     size_t operator()(const Archon::ComponentMask& componentMask) const noexcept
     {
-        return componentMask.GetHash();
+        return static_cast<size_t>(componentMask.GetHash());
     }
 };
 
