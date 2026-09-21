@@ -45,36 +45,71 @@ namespace Archon
         void SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentType& component);
 
         template <typename... ComponentTypes>
-        void SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components);
+        void SetComponent(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components);
+
+        template <typename ComponentType>
+        ComponentType& GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex);
+
+        template <typename ComponentType>
+        const ComponentType& GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
+
+        template <typename ComponentType>
+        ComponentType* TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex);
+
+        template <typename ComponentType>
+        const ComponentType* TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
+
+        [[nodiscard]] std::byte* TryGetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex);
+        [[nodiscard]] const std::byte* TryGetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
+        [[nodiscard]] std::byte& GetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex);
+        [[nodiscard]] const std::byte& GetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
+
+        void SetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex, const std::byte* component) const;
     };
 
     template <typename ComponentType>
-    void ArchetypeStorage::SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex,
-                                            const ComponentType& component)
+    void ArchetypeStorage::SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentType& component)
     {
-        assert(m_chunks.size() > chunkIndex);
-        assert(m_chunks[chunkIndex].m_columnCount > columnIndex);
-
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
-
-        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
-        {
-            if (componentPool.id == componentId)
-            {
-                std::byte* address = m_chunks[chunkIndex].data + componentPool.offset + columnIndex * componentPool.stride;
-                auto* destination = reinterpret_cast<ComponentType*>(address);
-                *destination = component;
-                return;
-            }
-        }
-
-        assert(false && "Component is not present in this archetype");
+        SetComponentData(componentId, chunkIndex, columnIndex, reinterpret_cast<const std::byte*>(&component));
     }
 
     template <typename... ComponentTypes>
-    void ArchetypeStorage::SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components)
+    void ArchetypeStorage::SetComponent(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components)
     {
         (SetComponentData(chunkIndex, columnIndex, components), ...);
+    }
+
+    template <typename ComponentType>
+    const ComponentType& ArchetypeStorage::GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const
+    {
+        const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
+
+        return reinterpret_cast<const ComponentType&>(GetComponentData(componentId, chunkIndex, columnIndex));
+    }
+
+    template <typename ComponentType>
+    ComponentType* ArchetypeStorage::TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex)
+    {
+        const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
+
+        return reinterpret_cast<ComponentType*>(TryGetComponentData(componentId, chunkIndex, columnIndex));
+    }
+
+    template <typename ComponentType>
+    const ComponentType* ArchetypeStorage::TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const
+    {
+        const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
+
+        return reinterpret_cast<const ComponentType*>(TryGetComponentData(componentId, chunkIndex, columnIndex));
+    }
+
+    template <typename ComponentType>
+    ComponentType& ArchetypeStorage::GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex)
+    {
+        const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
+
+        return reinterpret_cast<ComponentType&>(GetComponentData(componentId, chunkIndex, columnIndex));
     }
 }
 

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
@@ -19,12 +20,19 @@ namespace Archon
         ComponentId m_id = InvalidComponentId;
         size_t size = 0;
         size_t alignment = 0;
+        void (*construct)(void*) = nullptr;
     };
 
     class ComponentRegistry
     {
         static std::unordered_map<std::type_index, ComponentId> m_componentIdMap;
         static std::vector<ComponentInfo> m_componentInfo;
+
+        template <typename ComponentType>
+        static void ConstructComponent(void* address)
+        {
+            std::construct_at(static_cast<ComponentType*>(address), ComponentType{});
+        }
 
     public:
         template<typename ComponentType>
@@ -59,7 +67,11 @@ namespace Archon
 
         const auto id = static_cast<ComponentId>(m_componentInfo.size());
         m_componentIdMap.emplace(index, id);
-        m_componentInfo.emplace_back(id, sizeof(ComponentType), alignof(ComponentType));
+        m_componentInfo.emplace_back(
+            id,
+            sizeof(ComponentType),
+            alignof(ComponentType),
+            &ConstructComponent<ComponentType>);
         return id;
     }
 

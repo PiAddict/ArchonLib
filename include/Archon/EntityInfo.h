@@ -17,6 +17,11 @@ namespace Archon
         VersionType version = 0;
         EntityLocation location{};
         IndexType nextFreeIndex = 0;
+
+        [[nodiscard]] bool IsValidFor(EntityId entity) const noexcept
+        {
+            return location.IsValid() && version == entity.GetVersion();
+        }
     };
 
     class EntityInfoTable
@@ -31,7 +36,7 @@ namespace Archon
         std::vector<std::unique_ptr<Page>> m_pages;
 
     public:
-        EntityInfo& GetOrCreate(IndexType index)
+        EntityInfo& Get(IndexType index)
         {
             assert(index >= EntityId::FirstIndex);
 

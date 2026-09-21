@@ -67,6 +67,15 @@ namespace Archon
         const ColumnIndex columnIndex = chunk.m_columnCount;
         auto* entities = reinterpret_cast<EntityId*>(chunk.data);
         std::construct_at(entities + columnIndex, entity);
+
+        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
+        {
+            std::byte* address = chunk.data + componentPool.offset + columnIndex * componentPool.stride;
+            const ComponentInfo& componentInfo = ComponentRegistry::GetComponentInfo(componentPool.id);
+            assert(componentInfo.construct != nullptr);
+            componentInfo.construct(address);
+        }
+
         ++chunk.m_columnCount;
 
         if (chunk.m_columnCount == m_info->chunkInfo.capacity)
@@ -114,5 +123,95 @@ namespace Archon
         }
 
         return movedEntity;
+    }
+
+    const std::byte* ArchetypeStorage::TryGetComponentData(
+        ComponentId componentId,
+        ChunkIndex chunkIndex,
+        ColumnIndex columnIndex) const
+    {
+        if (m_chunks.size() <= chunkIndex)
+        {
+            return nullptr;
+        }
+
+        if (m_chunks[chunkIndex].m_columnCount <= columnIndex)
+        {
+            return nullptr;
+        }
+
+        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
+        {
+            if (componentPool.id == componentId)
+            {
+                return m_chunks[chunkIndex].data + componentPool.offset + columnIndex * componentPool.stride;
+            }
+        }
+
+        return nullptr;
+    }
+
+    std::byte* ArchetypeStorage::TryGetComponentData(
+        ComponentId componentId,
+        ChunkIndex chunkIndex,
+        ColumnIndex columnIndex)
+    {
+        return const_cast<std::byte*>(
+            static_cast<const ArchetypeStorage&>(*this).TryGetComponentData(
+                componentId,
+                chunkIndex,
+                columnIndex));
+    }
+
+    const std::byte& ArchetypeStorage::GetComponentData(
+        ComponentId componentId,
+        ChunkIndex chunkIndex,
+        ColumnIndex columnIndex) const
+    {
+        assert(m_chunks.size() > chunkIndex);
+        assert(m_chunks[chunkIndex].m_columnCount > columnIndex);
+
+        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
+        {
+            if (componentPool.id == componentId)
+            {
+                std::byte* address = m_chunks[chunkIndex].data + componentPool.offset + columnIndex * componentPool.stride;
+                return *address;
+            }
+        }
+
+        assert(false && "Component is not present in this archetype");
+    }
+
+    std::byte& ArchetypeStorage::GetComponentData(
+        ComponentId componentId,
+        ChunkIndex chunkIndex,
+        ColumnIndex columnIndex)
+    {
+        return const_cast<std::byte&>(
+            static_cast<const ArchetypeStorage&>(*this).GetComponentData(
+                componentId,
+                chunkIndex,
+                columnIndex));
+    }
+
+    void ArchetypeStorage::SetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex, const std::byte* component) const
+    {
+        assert(m_chunks.size() > chunkIndex);
+        assert(m_chunks[chunkIndex].m_columnCount > columnIndex);
+        assert(component != nullptr);
+
+        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
+        {
+            if (componentPool.id == componentId)
+            {
+                std::byte* address = m_chunks[chunkIndex].data + componentPool.offset + columnIndex * componentPool.stride;
+                const size_t componentSize = ComponentRegistry::GetComponentInfo(componentId).size;
+                std::memmove(address, component, componentSize);
+                return;
+            }
+        }
+
+        assert(false && "Component is not present in this archetype");
     }
 }

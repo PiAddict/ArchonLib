@@ -49,7 +49,7 @@ namespace Archon
             const size_t allocationAlignment = GetAllocationAlignment(componentMask);
 
             size_t sizePerColumn = sizeof(EntityId);
-            componentMask.ForEachComponentId([&sizePerColumn](ComponentId componentId)
+            componentMask.ForEachComponentId([&sizePerColumn](const ComponentId componentId)
             {
                 sizePerColumn += ComponentRegistry::GetComponentInfo(componentId).size;
             });
@@ -124,5 +124,12 @@ namespace Archon
         }
 
         return m_archetypeInfo[id].get();
+    }
+
+    ArchetypeId ArchetypeRegistry::GetId(const ComponentMask& mask)
+    {
+        const ArchetypeId id = Register(mask);
+        assert(id != InvalidArchetypeId);
+        return id;
     }
 }
