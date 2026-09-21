@@ -27,3 +27,7 @@ For most use cases, you should be good enough just to include the main heaader a
 ```cpp
 #include <Archon/Archon.h>
 ```
+
+## License
+
+Archon is licensed under the MIT License. See [LICENSE](LICENSE).
