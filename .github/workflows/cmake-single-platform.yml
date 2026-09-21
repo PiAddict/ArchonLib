@@ -1,4 +1,4 @@
-name: Build
+name: Build and test
 
 on:
   push:
@@ -9,18 +9,46 @@ on:
 permissions:
   contents: read
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC Debug
+            os: ubuntu-latest
+            build_type: Debug
+            cmake_args: -DCMAKE_CXX_COMPILER=g++
+          - name: Ubuntu Clang Debug Sanitized
+            os: ubuntu-latest
+            build_type: Debug
+            cmake_args: >-
+              -DCMAKE_CXX_COMPILER=clang++
+              '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer'
+              '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined'
+          - name: Windows MSVC Debug
+            os: windows-latest
+            build_type: Debug
+            cmake_args: ''
+          - name: Ubuntu GCC Release
+            os: ubuntu-latest
+            build_type: Release
+            cmake_args: -DCMAKE_CXX_COMPILER=g++
 
     steps:
       - uses: actions/checkout@v6
 
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        run: >-
+          cmake -S . -B build
+          -DARCHON_BUILD_TESTING=ON
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          ${{ matrix.cmake_args }}
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure

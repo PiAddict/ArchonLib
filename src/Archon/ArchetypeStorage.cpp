@@ -168,19 +168,9 @@ namespace Archon
         ChunkIndex chunkIndex,
         ColumnIndex columnIndex) const
     {
-        assert(m_chunks.size() > chunkIndex);
-        assert(m_chunks[chunkIndex].m_columnCount > columnIndex);
-
-        for (const ComponentPoolInfo& componentPool : m_info->chunkInfo.componentPools)
-        {
-            if (componentPool.id == componentId)
-            {
-                std::byte* address = m_chunks[chunkIndex].data + componentPool.offset + columnIndex * componentPool.stride;
-                return *address;
-            }
-        }
-
-        assert(false && "Component is not present in this archetype");
+        const std::byte* component = TryGetComponentData(componentId, chunkIndex, columnIndex);
+        assert(component != nullptr && "Component is not present in this archetype or the location is invalid");
+        return *component;
     }
 
     std::byte& ArchetypeStorage::GetComponentData(

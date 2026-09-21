@@ -20,13 +20,13 @@ namespace Archon
         [[nodiscard]] static const ArchetypeInfo& GetInfo(ArchetypeId id);
         [[nodiscard]] static const ArchetypeInfo* TryGetInfo(ArchetypeId id);
 
-        template<typename... ComponentTypes>
+        template<Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
         [[nodiscard]] static ArchetypeId GetId();
 
         [[nodiscard]] static ArchetypeId GetId(const ComponentMask& mask);
     };
 
-    template<typename... ComponentTypes>
+    template<Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
     ArchetypeId ArchetypeRegistry::GetId()
     {
         return Register(ComponentMask::Create<ComponentTypes...>());

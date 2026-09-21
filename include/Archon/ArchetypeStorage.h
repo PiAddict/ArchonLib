@@ -41,22 +41,22 @@ namespace Archon
         EntityLocation AddEntity(EntityId entity);
         std::optional<EntityId> RemoveEntity(const EntityLocation& location);
 
-        template <typename ComponentType>
+        template <Component ComponentType>
         void SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentType& component);
 
-        template <typename... ComponentTypes>
+        template <Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
         void SetComponent(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components);
 
-        template <typename ComponentType>
+        template <Component ComponentType>
         ComponentType& GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex);
 
-        template <typename ComponentType>
+        template <ComponentAccess ComponentType>
         const ComponentType& GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
 
-        template <typename ComponentType>
+        template <Component ComponentType>
         ComponentType* TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex);
 
-        template <typename ComponentType>
+        template <ComponentAccess ComponentType>
         const ComponentType* TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
 
         [[nodiscard]] std::byte* TryGetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex);
@@ -67,20 +67,20 @@ namespace Archon
         void SetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex, const std::byte* component) const;
     };
 
-    template <typename ComponentType>
+    template <Component ComponentType>
     void ArchetypeStorage::SetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentType& component)
     {
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
         SetComponentData(componentId, chunkIndex, columnIndex, reinterpret_cast<const std::byte*>(&component));
     }
 
-    template <typename... ComponentTypes>
+    template <Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
     void ArchetypeStorage::SetComponent(ChunkIndex chunkIndex, ColumnIndex columnIndex, const ComponentTypes&... components)
     {
         (SetComponentData(chunkIndex, columnIndex, components), ...);
     }
 
-    template <typename ComponentType>
+    template <ComponentAccess ComponentType>
     const ComponentType& ArchetypeStorage::GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const
     {
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
@@ -88,7 +88,7 @@ namespace Archon
         return reinterpret_cast<const ComponentType&>(GetComponentData(componentId, chunkIndex, columnIndex));
     }
 
-    template <typename ComponentType>
+    template <Component ComponentType>
     ComponentType* ArchetypeStorage::TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex)
     {
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
@@ -96,7 +96,7 @@ namespace Archon
         return reinterpret_cast<ComponentType*>(TryGetComponentData(componentId, chunkIndex, columnIndex));
     }
 
-    template <typename ComponentType>
+    template <ComponentAccess ComponentType>
     const ComponentType* ArchetypeStorage::TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const
     {
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
@@ -104,7 +104,7 @@ namespace Archon
         return reinterpret_cast<const ComponentType*>(TryGetComponentData(componentId, chunkIndex, columnIndex));
     }
 
-    template <typename ComponentType>
+    template <Component ComponentType>
     ComponentType& ArchetypeStorage::GetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex)
     {
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();

@@ -17,16 +17,16 @@ namespace Archon
     public:
         ComponentMask() = default;
 
-        template<typename ... ComponentTypes>
+        template<Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
         static ComponentMask Create();
 
         void Set(ComponentId id);
         [[nodiscard]] bool Test(ComponentId id) const;
 
-        template<typename ComponentType>
+        template<Component ComponentType>
         void Set();
 
-        template<typename ComponentType>
+        template<ComponentAccess ComponentType>
         [[nodiscard]] bool Test() const;
 
         void Clear(ComponentId id);
@@ -38,7 +38,7 @@ namespace Archon
         void ForEachComponentId(const std::function<void(ComponentId)>& callback) const;
     };
 
-    template <typename ... ComponentTypes>
+    template <Component... ComponentTypes> requires UniqueTypes<ComponentTypes...>
     ComponentMask ComponentMask::Create()
     {
         ComponentMask componentMask;
@@ -46,13 +46,13 @@ namespace Archon
         return componentMask;
     }
 
-    template <typename ComponentType>
+    template <Component ComponentType>
     void ComponentMask::Set()
     {
         Set(ComponentRegistry::GetId<ComponentType>());
     }
 
-    template <typename ComponentType>
+    template <ComponentAccess ComponentType>
     bool ComponentMask::Test() const
     {
         return Test(ComponentRegistry::GetId<ComponentType>());

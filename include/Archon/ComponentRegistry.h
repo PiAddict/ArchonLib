@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <Archon/Component.h>
+
 namespace Archon
 {
     using ComponentId = uint16_t;
@@ -28,32 +30,29 @@ namespace Archon
         static std::unordered_map<std::type_index, ComponentId> m_componentIdMap;
         static std::vector<ComponentInfo> m_componentInfo;
 
-        template <typename ComponentType>
+        template <Component ComponentType>
         static void ConstructComponent(void* address)
         {
             std::construct_at(static_cast<ComponentType*>(address), ComponentType{});
         }
 
     public:
-        template<typename ComponentType>
+        template<Component ComponentType>
         static ComponentId Register();
 
-        template<typename ComponentType>
+        template<ComponentAccess ComponentType>
         [[nodiscard]] static ComponentId GetId();
 
         [[nodiscard]] static const ComponentInfo* TryGetComponentInfo(ComponentId componentId);
         [[nodiscard]] static const ComponentInfo& GetComponentInfo(ComponentId componentId);
 
-        template<typename ComponentType>
+        template<ComponentAccess ComponentType>
         [[nodiscard]] static const ComponentInfo& GetComponentInfo();
     };
 
-    template <typename ComponentType>
+    template <Component ComponentType>
     ComponentId ComponentRegistry::Register()
     {
-        static_assert(std::is_standard_layout_v<ComponentType>, "ComponentType must be standard layout");
-        static_assert(std::is_trivial_v<ComponentType>, "ComponentType must be trivial");
-
         const std::type_index index = typeid(ComponentType);
         if (const auto found = m_componentIdMap.find(index); found != m_componentIdMap.end())
         {
@@ -75,15 +74,15 @@ namespace Archon
         return id;
     }
 
-    template <typename ComponentType>
+    template <ComponentAccess ComponentType>
     ComponentId ComponentRegistry::GetId()
     {
-        using BaseType = std::remove_cvref_t<ComponentType>;
+        using BaseType = std::remove_const_t<ComponentType>;
         static auto id = Register<BaseType>();
         return id;
     }
 
-    template <typename ComponentType>
+    template <ComponentAccess ComponentType>
     const ComponentInfo& ComponentRegistry::GetComponentInfo()
     {
         return GetComponentInfo(GetId<ComponentType>());
