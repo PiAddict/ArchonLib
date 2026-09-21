@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 project(Archon LANGUAGES CXX)
 
 add_library(Archon STATIC
-        src/Archon/Component.cpp
         src/Archon/ComponentRegistry.cpp
         src/Archon/ComponentMask.cpp
         src/Archon/EntityId.cpp
