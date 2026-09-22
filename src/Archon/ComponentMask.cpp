@@ -37,6 +37,34 @@ namespace Archon
         return m_mask[index] & (1ULL << (id % 64));
     }
 
+    bool ComponentMask::ContainsAll(const ComponentMask& required) const
+    {
+        for (size_t index = 0; index < required.m_mask.size(); ++index)
+        {
+            const uint64_t available = index < m_mask.size() ? m_mask[index] : 0;
+            if ((available & required.m_mask[index]) != required.m_mask[index])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool ComponentMask::Intersects(const ComponentMask& other) const
+    {
+        const size_t size = std::min(m_mask.size(), other.m_mask.size());
+        for (size_t index = 0; index < size; ++index)
+        {
+            if ((m_mask[index] & other.m_mask[index]) != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void ComponentMask::Clear(const ComponentId id)
     {
         if (id == InvalidComponentId)

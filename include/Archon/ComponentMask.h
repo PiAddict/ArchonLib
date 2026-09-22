@@ -22,6 +22,8 @@ namespace Archon
 
         void Set(ComponentId id);
         [[nodiscard]] bool Test(ComponentId id) const;
+        [[nodiscard]] bool ContainsAll(const ComponentMask& required) const;
+        [[nodiscard]] bool Intersects(const ComponentMask& other) const;
 
         template<Component ComponentType>
         void Set();

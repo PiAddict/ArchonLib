@@ -24,6 +24,20 @@ namespace
         int value;
     };
 
+    struct Target
+    {
+        int id;
+    };
+
+    struct Frozen
+    {
+    };
+
+    struct Mana
+    {
+        int value;
+    };
+
     struct NonTrivial
     {
         ~NonTrivial() {}
@@ -35,6 +49,12 @@ namespace
         manager.template CreateEntity<ComponentTypes...>();
     };
 
+    template <typename... Terms>
+    concept CanCreateSystemContract = requires
+    {
+        typename Archon::SystemContract<Terms...>;
+    };
+
     static_assert(Archon::Component<Position>);
     static_assert(!Archon::Component<const Position>);
     static_assert(Archon::ComponentAccess<Position>);
@@ -43,6 +63,78 @@ namespace
     static_assert(Archon::UniqueTypes<Position, Velocity, Health>);
     static_assert(!Archon::UniqueTypes<Position, Velocity, Position>);
     static_assert(!Archon::UniqueTypes<Position, const Position>);
+
+    static_assert(!Archon::Core::IsOptionalV<Position>);
+    static_assert(Archon::Core::IsOptionalV<Archon::Optional<Position>>);
+    static_assert(Archon::Core::IsOptionalV<Archon::Optional<const Position>>);
+    static_assert(!Archon::Core::IsWithoutV<Position>);
+    static_assert(Archon::Core::IsWithoutV<Archon::Without<Position>>);
+    static_assert(Archon::Core::IsRequiredTermV<Position>);
+    static_assert(!Archon::Core::IsRequiredTermV<Archon::Optional<Position>>);
+    static_assert(!Archon::Core::IsRequiredTermV<Archon::Without<Position>>);
+    static_assert(std::same_as<Archon::Core::UnderlyingComponentT<Position>, Position>);
+    static_assert(std::same_as<Archon::Core::UnderlyingComponentT<Archon::Optional<const Position>>, const Position>);
+    static_assert(std::same_as<Archon::Core::UnderlyingComponentT<Archon::Without<Position>>, Position>);
+    static_assert(std::same_as<Archon::Core::NormalizedComponentT<Archon::Optional<const Position>>, Position>);
+    static_assert(Archon::Core::AreUniqueUnderlyingComponentsV<Position, const Velocity, Archon::Optional<Health>>);
+    static_assert(!Archon::Core::AreUniqueUnderlyingComponentsV<Position, const Position>);
+    static_assert(!Archon::Core::AreUniqueUnderlyingComponentsV<Position, Archon::Optional<Position>>);
+    static_assert(!Archon::Core::AreUniqueUnderlyingComponentsV<Position, Archon::Without<Position>>);
+    static_assert(Archon::Core::ContainsV<Position, Archon::Core::TypeList<Velocity, Position>>);
+    static_assert(!Archon::Core::ContainsV<Health, Archon::Core::TypeList<Velocity, Position>>);
+    static_assert(Archon::Core::SizeV<Archon::Core::TypeList<Position, Velocity, Health>> == 3);
+
+    using MovementContract = Archon::SystemContract<
+        Position,
+        const Velocity,
+        Archon::Optional<Health>,
+        Archon::Optional<const Target>,
+        Archon::Without<Frozen>>;
+
+    static_assert(CanCreateSystemContract<Position, const Velocity>);
+    static_assert(!CanCreateSystemContract<Position, Position>);
+    static_assert(!CanCreateSystemContract<Position, const Position>);
+    static_assert(!CanCreateSystemContract<Position, Archon::Optional<Position>>);
+    static_assert(!CanCreateSystemContract<Position, Archon::Without<Position>>);
+
+    static_assert(std::same_as<MovementContract::RequiredTerms, Archon::Core::TypeList<Position, const Velocity>>);
+    static_assert(std::same_as<MovementContract::OptionalTerms, Archon::Core::TypeList<Archon::Optional<Health>, Archon::Optional<const Target>>>);
+    static_assert(std::same_as<MovementContract::ExcludedTerms, Archon::Core::TypeList<Archon::Without<Frozen>>>);
+
+    static_assert(MovementContract::HasReadAccess<Position>);
+    static_assert(MovementContract::HasReadAccess<const Position>);
+    static_assert(MovementContract::HasWriteAccess<Position>);
+    static_assert(!MovementContract::HasWriteAccess<const Position>);
+    static_assert(MovementContract::Requires<Position>);
+    static_assert(!MovementContract::MayHave<Position>);
+
+    static_assert(MovementContract::HasReadAccess<Velocity>);
+    static_assert(MovementContract::HasReadAccess<const Velocity>);
+    static_assert(!MovementContract::HasWriteAccess<Velocity>);
+    static_assert(!MovementContract::HasWriteAccess<const Velocity>);
+    static_assert(MovementContract::Requires<Velocity>);
+
+    static_assert(MovementContract::HasReadAccess<Health>);
+    static_assert(MovementContract::HasWriteAccess<Health>);
+    static_assert(!MovementContract::Requires<Health>);
+    static_assert(MovementContract::MayHave<Health>);
+
+    static_assert(MovementContract::HasReadAccess<Target>);
+    static_assert(!MovementContract::HasWriteAccess<Target>);
+    static_assert(MovementContract::MayHave<Target>);
+
+    static_assert(MovementContract::Excludes<Frozen>);
+    static_assert(!MovementContract::HasReadAccess<Frozen>);
+    static_assert(!MovementContract::HasWriteAccess<Frozen>);
+    static_assert(!MovementContract::Requires<Frozen>);
+    static_assert(!MovementContract::MayHave<Frozen>);
+
+    static_assert(!MovementContract::HasReadAccess<Mana>);
+    static_assert(!MovementContract::HasWriteAccess<Mana>);
+    static_assert(!MovementContract::Requires<Mana>);
+    static_assert(!MovementContract::MayHave<Mana>);
+    static_assert(!MovementContract::Excludes<Mana>);
+
     static_assert(CanCreateEntity<Position>);
     static_assert(CanCreateEntity<Position, Velocity, Health>);
     static_assert(!CanCreateEntity<Position, Position>);

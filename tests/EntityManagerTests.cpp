@@ -27,6 +27,39 @@ namespace
         bool operator==(const Health&) const = default;
     };
 
+    struct Frozen
+    {
+    };
+
+    TEST(SystemContract, CachesQueryMasksAndMatchesArchetypeComposition)
+    {
+        using Contract = Archon::SystemContract<
+            Position,
+            const Velocity,
+            Archon::Optional<Health>,
+            Archon::Without<Frozen>>;
+
+        const Archon::ComponentMask& required = Contract::GetRequiredMask();
+        const Archon::ComponentMask& excluded = Contract::GetExcludedMask();
+
+        EXPECT_EQ(&required, &Contract::GetRequiredMask());
+        EXPECT_EQ(&excluded, &Contract::GetExcludedMask());
+        EXPECT_TRUE(required.Test<Position>());
+        EXPECT_TRUE(required.Test<Velocity>());
+        EXPECT_FALSE(required.Test<Health>());
+        EXPECT_TRUE(excluded.Test<Frozen>());
+
+        const Archon::ComponentMask matching = Archon::ComponentMask::Create<Position, Velocity>();
+        const Archon::ComponentMask excludedMatch = Archon::ComponentMask::Create<Position, Velocity, Frozen>();
+        const Archon::ComponentMask incomplete = Archon::ComponentMask::Create<Position>();
+
+        EXPECT_TRUE(matching.ContainsAll(required));
+        EXPECT_FALSE(matching.Intersects(excluded));
+        EXPECT_FALSE(incomplete.ContainsAll(required));
+        EXPECT_TRUE(excludedMatch.ContainsAll(required));
+        EXPECT_TRUE(excludedMatch.Intersects(excluded));
+    }
+
     TEST(EntityManager, DestroyedIdsAreInvalidAndTheirIndexIsReusedWithANewVersion)
     {
         Archon::EntityManager manager;
