@@ -15,6 +15,11 @@
 
 namespace Archon
 {
+    namespace Core
+    {
+        struct SystemQueryAccess;
+    }
+
     class EntityManager
     {
         static constexpr size_t ArchetypePageSize = 256;
@@ -30,6 +35,7 @@ namespace Archon
         IndexType m_freeListHead = 0;
 
         friend struct Core::EntityViewState;
+        friend struct Core::SystemQueryAccess;
 
         ArchetypeStorage* InitializeArchetypeStorage(ArchetypeId id);
         [[nodiscard]] ArchetypeStorage* FindArchetypeStorage(ArchetypeId id) const;
@@ -42,6 +48,26 @@ namespace Archon
         bool TryRemoveComponent(EntityId entity, ComponentId componentId);
         bool MigrateEntity(EntityId entity, EntityInfo& entityInfo, const ComponentMask& newComponentMask,
             ComponentId addedComponentId = InvalidComponentId, const std::byte* addedComponent = nullptr);
+
+        template<typename Callback>
+        void ForEachInitializedArchetype(Callback&& callback)
+        {
+            for (const auto & page : m_archetypePages)
+            {
+                if (!page)
+                {
+                    continue;
+                }
+
+                for (size_t entryIndex = 0; entryIndex < ArchetypePageSize; ++entryIndex)
+                {
+                    if (ArchetypeStorage* storage = page->entries[entryIndex].get())
+                    {
+                        callback(*storage);
+                    }
+                }
+            }
+        }
 
     public:
         ArchetypeStorage& GetArchetypeStorage(ArchetypeId id);

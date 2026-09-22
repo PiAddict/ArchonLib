@@ -21,35 +21,35 @@ namespace Archon
 
         template <typename Requested, typename Term>
         struct TermGrantsReadAccess : std::bool_constant<
-            !Core::IsWithoutV<Term> && IsSameUnderlyingComponent<Requested, Term>>
+                !Core::IsWithoutV<Term> && IsSameUnderlyingComponent<Requested, Term>>
         {
         };
 
         template <typename Requested, typename Term>
         struct TermGrantsWriteAccess : std::bool_constant<
-            !Core::IsWithoutV<Term> &&
-            !std::is_const_v<Requested> &&
-            !std::is_const_v<Core::UnderlyingComponentT<Term>> &&
-            IsSameUnderlyingComponent<Requested, Term>>
+                !Core::IsWithoutV<Term> &&
+                !std::is_const_v<Requested> &&
+                !std::is_const_v<Core::UnderlyingComponentT<Term>> &&
+                IsSameUnderlyingComponent<Requested, Term>>
         {
         };
 
         template <typename Requested, typename Term>
         struct TermProvidesRequiredComponent : std::bool_constant<
-            Core::IsRequiredTermV<Term> &&
-            IsSameUnderlyingComponent<Requested, Term>>
+                Core::IsRequiredTermV<Term> &&
+                IsSameUnderlyingComponent<Requested, Term>>
         {
         };
 
         template <typename Requested, typename Term>
         struct TermProvidesOptionalComponent : std::bool_constant<
-            Core::IsOptionalV<Term> && IsSameUnderlyingComponent<Requested, Term>>
+                Core::IsOptionalV<Term> && IsSameUnderlyingComponent<Requested, Term>>
         {
         };
 
         template <typename Requested, typename Term>
         struct TermExcludesComponent : std::bool_constant<
-            Core::IsWithoutV<Term> && IsSameUnderlyingComponent<Requested, Term>>
+                Core::IsWithoutV<Term> && IsSameUnderlyingComponent<Requested, Term>>
         {
         };
 
@@ -124,6 +124,25 @@ namespace Archon
             return mask;
         }
     };
+
+    namespace Core
+    {
+        template <typename Type>
+        struct IsSystemContract : std::false_type
+        {
+        };
+
+        template <typename... Terms>
+        struct IsSystemContract<SystemContract<Terms...>> : std::true_type
+        {
+        };
+
+        template <typename Type>
+        inline constexpr bool IsSystemContractV = IsSystemContract<Type>::value;
+    }
+
+    template <typename Type>
+    concept SystemContractConcept = Core::IsSystemContractV<Type>;
 }
 
 #endif // ARCHON_SYSTEMCONTRACT_H

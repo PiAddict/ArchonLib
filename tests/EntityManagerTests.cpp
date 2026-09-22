@@ -31,6 +31,12 @@ namespace
     {
     };
 
+    struct Ground
+    {
+        int value;
+        bool operator==(const Ground&) const = default;
+    };
+
     TEST(SystemContract, CachesQueryMasksAndMatchesArchetypeComposition)
     {
         using Contract = Archon::SystemContract<
@@ -216,5 +222,125 @@ namespace
         auto directConstView = manager.TryView<const Position>(entity);
         ASSERT_TRUE(directConstView.has_value());
         EXPECT_EQ(directConstView->Get<const Position>(), (Position{7, 8}));
+    }
+
+    TEST(SystemQuery, MatchesOnlyThisManagersInitializedStoragesAndExposesChunkSpans)
+    {
+        using Contract = Archon::SystemContract<Position, const Velocity, Archon::Optional<const Ground>, Archon::Without<Frozen>>;
+        Archon::EntityManager firstManager;
+        Archon::EntityManager secondManager;
+
+        // Register and initialize a matching storage only in the first world.
+        const Archon::EntityId firstOnly = firstManager.CreateEntity<Position, Velocity>();
+        firstManager.SetComponent(firstOnly, Position{1, 2});
+        firstManager.SetComponent(firstOnly, Velocity{3, 4});
+
+        const Archon::EntityId matching = secondManager.CreateEntity<Position, Velocity, Ground>();
+        const Archon::EntityId optionalAbsent = secondManager.CreateEntity<Position, Velocity>();
+        const Archon::EntityId excluded = secondManager.CreateEntity<Position, Velocity, Frozen>();
+        secondManager.SetComponent(matching, Position{10, 11});
+        secondManager.SetComponent(matching, Velocity{12, 13});
+        secondManager.SetComponent(matching, Ground{14});
+        secondManager.SetComponent(optionalAbsent, Position{20, 21});
+        secondManager.SetComponent(optionalAbsent, Velocity{22, 23});
+        secondManager.SetComponent(excluded, Position{30, 31});
+        secondManager.SetComponent(excluded, Velocity{32, 33});
+
+        Archon::SystemQuery<Contract> query(secondManager);
+        size_t chunkCount = 0;
+        size_t entityCount = 0;
+        query.ForEachChunk([&](const Archon::QueryChunk<Contract>& chunk)
+        {
+            ++chunkCount;
+            const auto positions = chunk.Get<Position>();
+            const auto velocities = chunk.Get<const Velocity>();
+            const auto ground = chunk.TryGet<const Ground>();
+            EXPECT_EQ(positions.size(), chunk.Entities().size());
+            EXPECT_EQ(velocities.size(), chunk.Entities().size());
+            EXPECT_EQ(ground.has_value(), chunk.Entities()[0] == matching);
+            entityCount += chunk.Entities().size();
+        });
+
+        EXPECT_EQ(chunkCount, 2U);
+        EXPECT_EQ(entityCount, 2U);
+    }
+
+    TEST(SystemQuery, EmptyChunksExposeEmptySpansForPresentComponents)
+    {
+        Archon::EntityManager manager;
+        const Archon::EntityId entity = manager.CreateEntity<Position>();
+        manager.DestroyEntity(entity);
+
+        Archon::ArchetypeStorage& storage = manager.GetArchetypeStorage(
+            Archon::ArchetypeRegistry::GetId<Position>());
+        ASSERT_EQ(storage.GetNumChunks(), 1U);
+        EXPECT_TRUE(storage.GetEntities(0).empty());
+
+        const auto positions = storage.TryGetComponentSpan<Position>(0);
+        ASSERT_TRUE(positions.has_value());
+        EXPECT_TRUE(positions->empty());
+        EXPECT_TRUE(storage.GetComponentSpan<Position>(0).empty());
+        EXPECT_FALSE(storage.TryGetComponentSpan<Velocity>(0).has_value());
+        EXPECT_FALSE(storage.TryGetComponentSpan<Position>(1).has_value());
+    }
+
+    TEST(SystemQuery, ForEachBindsContractAwareViewsAndDirectComponentParameters)
+    {
+        using Contract = Archon::SystemContract<Position, const Velocity, Archon::Optional<const Ground>, Archon::Without<Frozen>>;
+        Archon::EntityManager manager;
+        const Archon::EntityId withGround = manager.CreateEntity<Position, Velocity, Ground>();
+        const Archon::EntityId withoutGround = manager.CreateEntity<Position, Velocity>();
+        manager.SetComponent(withGround, Position{1, 2});
+        manager.SetComponent(withGround, Velocity{3, 4});
+        manager.SetComponent(withGround, Ground{5});
+        manager.SetComponent(withoutGround, Position{6, 7});
+        manager.SetComponent(withoutGround, Velocity{8, 9});
+
+        Archon::SystemQuery<Contract> query(manager);
+        Position* withGroundPosition = nullptr;
+        Position* withoutGroundPosition = nullptr;
+        query.ForEachChunk([&](const Archon::QueryChunk<Contract>& chunk)
+        {
+            const auto entities = chunk.Entities();
+            const auto positions = chunk.Get<Position>();
+            for (size_t index = 0; index < entities.size(); ++index)
+            {
+                Position*& destination = entities[index] == withGround ? withGroundPosition : withoutGroundPosition;
+                destination = &positions[index];
+            }
+        });
+
+        size_t viewVisits = 0;
+        query.ForEach([&](auto entity)
+        {
+            ++viewVisits;
+            EXPECT_NE(entity.template TryGet<Position>(), nullptr);
+            EXPECT_NE(entity.template TryGet<const Velocity>(), nullptr);
+            if (entity.GetEntityId() == withGround)
+            {
+                EXPECT_EQ(entity.template TryGet<Position>(), withGroundPosition);
+                EXPECT_EQ(entity.template TryGet<const Ground>()->value, 5);
+            }
+            else
+            {
+                EXPECT_EQ(entity.template TryGet<Position>(), withoutGroundPosition);
+                EXPECT_EQ(entity.template TryGet<const Ground>(), nullptr);
+            }
+        });
+        EXPECT_EQ(viewVisits, 2U);
+
+        size_t directVisits = 0;
+        query.ForEach([&](auto entity, Position& position, const Velocity& velocity, const Ground* ground)
+        {
+            ++directVisits;
+            EXPECT_EQ(&position, entity.template TryGet<Position>());
+            EXPECT_EQ(&velocity, entity.template TryGet<const Velocity>());
+            EXPECT_EQ(ground, entity.template TryGet<const Ground>());
+            position.x += velocity.x;
+        });
+
+        EXPECT_EQ(directVisits, 2U);
+        EXPECT_EQ(manager.TryGetComponent<Position>(withGround)->x, 4);
+        EXPECT_EQ(manager.TryGetComponent<Position>(withoutGround)->x, 14);
     }
 }

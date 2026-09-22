@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include <Archon/Archetype.h>
@@ -37,6 +38,8 @@ namespace Archon
         [[nodiscard]] ArchetypeId GetId() const;
         [[nodiscard]] const ArchetypeInfo& GetInfo() const;
         [[nodiscard]] size_t GetNumChunks() const;
+        [[nodiscard]] size_t GetChunkEntityCount(ChunkIndex chunkIndex) const;
+        [[nodiscard]] std::span<const EntityId> GetEntities(ChunkIndex chunkIndex) const;
 
         EntityLocation AddEntity(EntityId entity);
         std::optional<EntityId> RemoveEntity(const EntityLocation& location);
@@ -58,6 +61,12 @@ namespace Archon
 
         template <ComponentAccess ComponentType>
         const ComponentType* TryGetComponentData(ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
+
+        template <ComponentAccess ComponentType>
+        [[nodiscard]] std::span<ComponentType> GetComponentSpan(ChunkIndex chunkIndex);
+
+        template <ComponentAccess ComponentType>
+        [[nodiscard]] std::optional<std::span<ComponentType>> TryGetComponentSpan(ChunkIndex chunkIndex);
 
         [[nodiscard]] std::byte* TryGetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex);
         [[nodiscard]] const std::byte* TryGetComponentData(ComponentId componentId, ChunkIndex chunkIndex, ColumnIndex columnIndex) const;
@@ -110,6 +119,42 @@ namespace Archon
         const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
 
         return reinterpret_cast<ComponentType&>(GetComponentData(componentId, chunkIndex, columnIndex));
+    }
+
+    template <ComponentAccess ComponentType>
+    std::span<ComponentType> ArchetypeStorage::GetComponentSpan(const ChunkIndex chunkIndex)
+    {
+        const auto result = TryGetComponentSpan<ComponentType>(chunkIndex);
+        assert(result.has_value() && "Component is not present in this archetype or the chunk is invalid");
+        return *result;
+    }
+
+    template <ComponentAccess ComponentType>
+    std::optional<std::span<ComponentType>> ArchetypeStorage::TryGetComponentSpan(const ChunkIndex chunkIndex)
+    {
+        if (chunkIndex >= m_chunks.size())
+        {
+            return std::nullopt;
+        }
+
+        const ComponentId componentId = ComponentRegistry::GetId<ComponentType>();
+        const ComponentPoolInfo* pool = nullptr;
+        for (const ComponentPoolInfo& candidate : m_info->chunkInfo.componentPools)
+        {
+            if (candidate.id == componentId)
+            {
+                pool = &candidate;
+                break;
+            }
+        }
+
+        if (pool == nullptr)
+        {
+            return std::nullopt;
+        }
+
+        ComponentType* first = reinterpret_cast<ComponentType*>(m_chunks[chunkIndex].data + pool->offset);
+        return std::span<ComponentType>(first, GetChunkEntityCount(chunkIndex));
     }
 }
 

@@ -55,6 +55,35 @@ namespace
         typename Archon::SystemContract<Terms...>;
     };
 
+    template <typename Contract>
+    concept CanCreateSystemQuery = requires(Archon::EntityManager& manager)
+    {
+        Archon::SystemQuery<Contract>{manager};
+    };
+
+    template <typename View, typename ComponentType>
+    concept CanGetFromView = requires(View view)
+    {
+        view.template Get<ComponentType>();
+    };
+
+    struct ContractLookalike
+    {
+        using DeclaredTerms = Archon::Core::TypeList<Position>;
+        using RequiredTerms = DeclaredTerms;
+        using OptionalTerms = Archon::Core::TypeList<>;
+        using ExcludedTerms = Archon::Core::TypeList<>;
+
+        static const Archon::ComponentMask& GetRequiredMask();
+        static const Archon::ComponentMask& GetExcludedMask();
+    };
+
+    template <typename View, typename ComponentType>
+    concept CanTryGetFromView = requires(View view)
+    {
+        view.template TryGet<ComponentType>();
+    };
+
     static_assert(Archon::Component<Position>);
     static_assert(!Archon::Component<const Position>);
     static_assert(Archon::ComponentAccess<Position>);
@@ -134,6 +163,38 @@ namespace
     static_assert(!MovementContract::Requires<Mana>);
     static_assert(!MovementContract::MayHave<Mana>);
     static_assert(!MovementContract::Excludes<Mana>);
+
+    using FullContractView = Archon::EntityView<
+        Position,
+        const Velocity,
+        Archon::Optional<Health>,
+        Archon::Optional<const Target>,
+        Archon::Without<Frozen>>;
+
+    static_assert(Archon::SystemContractConcept<MovementContract>);
+    static_assert(!Archon::SystemContractConcept<Position>);
+    static_assert(!Archon::SystemContractConcept<ContractLookalike>);
+    static_assert(CanCreateSystemQuery<MovementContract>);
+    static_assert(!CanCreateSystemQuery<Position>);
+    static_assert(!CanCreateSystemQuery<ContractLookalike>);
+    static_assert(std::same_as<
+        decltype(std::declval<const Archon::QueryChunk<MovementContract>&>().Entities()),
+        std::span<const Archon::EntityId>>);
+    static_assert(std::same_as<
+        decltype(std::declval<Archon::ArchetypeStorage&>().GetEntities(Archon::ChunkIndex{})),
+        std::span<const Archon::EntityId>>);
+    static_assert(CanGetFromView<FullContractView, Position>);
+    static_assert(CanGetFromView<FullContractView, const Velocity>);
+    static_assert(!CanGetFromView<FullContractView, Velocity>);
+    static_assert(!CanGetFromView<FullContractView, Health>);
+    static_assert(CanTryGetFromView<FullContractView, Health>);
+    static_assert(CanTryGetFromView<FullContractView, const Target>);
+    static_assert(!CanTryGetFromView<FullContractView, Frozen>);
+    static_assert(!CanTryGetFromView<FullContractView, Mana>);
+    static_assert(std::same_as<decltype(std::declval<FullContractView>().TryGet<Health>()), Health*>);
+    static_assert(std::same_as<decltype(std::declval<FullContractView>().TryGet<const Target>()), const Target*>);
+    static_assert(std::is_constructible_v<Archon::EntityView<const Position>, const FullContractView&>);
+    static_assert(!std::is_constructible_v<Archon::EntityView<Health>, const FullContractView&>);
 
     static_assert(CanCreateEntity<Position>);
     static_assert(CanCreateEntity<Position, Velocity, Health>);

@@ -19,6 +19,12 @@ namespace Archon::Core
         assert(storage != nullptr && "Entity references missing archetype storage");
     }
 
+    EntityViewState::EntityViewState(EntityManager& manager, const EntityId entity, ArchetypeStorage& storage,
+        const EntityLocation location)
+        : manager(&manager), entity(entity), storage(&storage), location(location)
+    {
+    }
+
     bool EntityViewState::IsValid() const
     {
         if (manager == nullptr)

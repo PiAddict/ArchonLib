@@ -53,6 +53,18 @@ namespace Archon
         return m_chunks.size();
     }
 
+    size_t ArchetypeStorage::GetChunkEntityCount(const ChunkIndex chunkIndex) const
+    {
+        return chunkIndex < m_chunks.size() ? m_chunks[chunkIndex].m_columnCount : 0;
+    }
+
+    std::span<const EntityId> ArchetypeStorage::GetEntities(const ChunkIndex chunkIndex) const
+    {
+        assert(chunkIndex < m_chunks.size());
+        const Chunk& chunk = m_chunks[chunkIndex];
+        return {reinterpret_cast<const EntityId*>(chunk.data), chunk.m_columnCount};
+    }
+
     EntityLocation ArchetypeStorage::AddEntity(EntityId entity)
     {
         if (m_nonFullChunks.empty())

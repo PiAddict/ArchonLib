@@ -14,5 +14,6 @@
 #include <Archon/ArchetypeRegistry.h>
 #include <Archon/ArchetypeStorage.h>
 #include <Archon/EntityManager.h>
+#include <Archon/SystemQuery.h>
 
 #endif // ARCHON_ARCHON_H
